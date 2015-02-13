@@ -1,0 +1,3 @@
+Requirements for Windows Users :
+
+To compile with C# from the command line, you must launch the `VCVARS32.BAT` in the binaries folder of VS Studio.

@@ -1,0 +1,2 @@
+compile:
+	csc MonteCarloPi.cs
