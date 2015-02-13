@@ -37,7 +37,7 @@ object MontecarloPi {
   class MasterActor(concurrency: Int = 4) extends Actor with ActorLogging {
     val workers =
       for (i <- 1 to concurrency)
-        yield context watch context.actorOf(WorkerActor.props)
+        yield context.actorOf(WorkerActor.props)
 
     override def receive = {
       case Req(n) =>
