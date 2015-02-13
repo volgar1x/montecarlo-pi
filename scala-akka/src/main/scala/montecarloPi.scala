@@ -1,5 +1,7 @@
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import akka.util.Timeout
+import scala.concurrent.Await
+import scala.concurrent.duration._
 
 object MontecarloPi {
   def sample(iters: Int): Int = {
@@ -68,37 +70,26 @@ object MontecarloPi {
     def props(c: Int) = Props(classOf[MasterActor], c)
   }
 
-  implicit class ExtArgs(val self: Array[String]) extends AnyVal {
-    def getInt(i: Int): Option[Int] =
-      if (i >= self.length) None
-      else try {
-        Some(java.lang.Integer.parseInt(self(i)))
-      } catch {
-        case _: java.lang.NumberFormatException =>
-          None
-      }
+  def run(precision: Int, parallelism: Int)(implicit timeout: Timeout = 10.minutes): Double = {
+    import akka.pattern.{ask, pipe}
+    import scala.concurrent.ExecutionContext.Implicits.global
+
+    val system = ActorSystem("montecarlo-pi")
+    val master = system.actorOf(MasterActor.props(parallelism), name = "master")
+
+    val resp = Await.result(master ? Req(precision), timeout.duration).asInstanceOf[Resp]
+    val pi = resp.result * 4.0 / precision
+    system.shutdown()
+
+    pi
   }
   
   def main(args: Array[String]): Unit = {
-    import akka.pattern.{ask, pipe}
-    import scala.concurrent.duration._
-    import scala.concurrent.ExecutionContext.Implicits.global
+    val pi = run(
+      precision = args(0).toInt,
+      parallelism = args(1).toInt
+    )
 
-    implicit val timeout: Timeout = 10.minutes
-
-    val n = args.getInt(0).getOrElse(100000000)
-    val c = args.getInt(1).getOrElse(4)
-    
-    val system = ActorSystem("montecarlo-pi")
-    val master = system.actorOf(MasterActor.props(c), name = "master")
-
-    val respFut = master ? Req(n)
-    for (resp <- respFut.mapTo[Resp]) {
-      val pi = resp.result * 4.0 / n
-
-      println(pi)
-
-      system.shutdown()
-    }
+    println(pi)
   }
 }
